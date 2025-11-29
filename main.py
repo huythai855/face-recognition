@@ -3,14 +3,14 @@ import io
 import os
 import sys
 import uuid
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-
+from dotenv import load_dotenv
 from transformers import AutoModel
 from huggingface_hub import hf_hub_download
 
 import numpy as np
-
 import torch
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,8 +20,8 @@ from pydantic import BaseModel, Field
 from qdrant_client import QdrantClient
 from qdrant_client.http import models as qmodels
 from torchvision import transforms
-from transformers import AutoModel  # <-- thêm dòng này
 
+load_dotenv()
 
 def _get_env(key: str, default: Optional[str] = None) -> str:
     value = os.getenv(key)
@@ -57,15 +57,6 @@ FACE_MATCH_THRESHOLD = _get_float("FACE_MATCH_THRESHOLD", 0.6)
 FACE_SEARCH_TOPK = _get_int("FACE_SEARCH_TOPK", 5)
 FACE_VECTOR_SIZE = _get_int("FACE_VECTOR_SIZE", 512)
 
-# ==== BỎ HẲN MỌI THỨ LIÊN QUAN TỚI ADAFACE_ROOT / .pth ====
-# ADAFACE_ROOT = _get_env("ADAFACE_ROOT") or None
-# if ADAFACE_ROOT and ADAFACE_ROOT not in sys.path:
-#     sys.path.insert(0, ADAFACE_ROOT)
-# ADAFACE_ARCH = _get_env("ADAFACE_ARCH", "ir_101")
-# default_weights = os.path.join(ADAFACE_ROOT, "pretrained", "adaface_ir101_ms1mv3.pth") if ADAFACE_ROOT else ""
-# ADAFACE_WEIGHTS = _get_env("ADAFACE_WEIGHTS", default_weights)
-
-# Model ID trên HuggingFace (nếu muốn override thì đặt env ADAFACE_MODEL_ID)
 ADAFACE_MODEL_ID = _get_env("ADAFACE_MODEL_ID", "minchul/cvlface_adaface_ir101_ms1mv3")
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -111,9 +102,9 @@ class FaceImageProcessor:
 
 class AdaFaceEmbedder:
     """
-    Embedder dùng model AdaFace IR101 MS1MV3 từ HuggingFace.
-    Dùng đúng helper giống trong model card: tải repo về local, thêm vào sys.path,
-    rồi AutoModel.from_pretrained(local_path, trust_remote_code=True).
+    Embedder using AdaFace IR101 MS1MV3 model from HuggingFace.
+    Downloads the repository locally, adds it to sys.path, then loads via
+    AutoModel.from_pretrained(local_path, trust_remote_code=True).
     """
 
     def __init__(self, device: str, model_id: str) -> None:
@@ -131,7 +122,6 @@ class AdaFaceEmbedder:
         self.model.to(device)
         self.model.eval()
 
-        # AdaFace dùng ảnh 112x112, normalize [-1,1]
         self.preprocess = transforms.Compose(
             [
                 transforms.Resize((112, 112)),
@@ -139,8 +129,6 @@ class AdaFaceEmbedder:
                 transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
             ]
         )
-
-    # ==== các helper giống trong model card HF ====
 
     def _download_repo(self, repo_id: str, path: str) -> None:
         os.makedirs(path, exist_ok=True)
@@ -172,12 +160,9 @@ class AdaFaceEmbedder:
         try:
             model = AutoModel.from_pretrained(path, trust_remote_code=True)
         finally:
-            # luôn phục hồi lại môi trường dù lỗi
             sys.path.pop(0)
             os.chdir(cwd)
         return model
-
-    # ==== inference như cũ ====
 
     def create_embedding(self, face_image: Image.Image) -> np.ndarray:
         tensor = self.preprocess(face_image).unsqueeze(0).to(self.device)
@@ -185,7 +170,6 @@ class AdaFaceEmbedder:
         with torch.no_grad():
             outputs = self.model(tensor)
 
-        # Repo có thể trả tensor hoặc dict
         if isinstance(outputs, dict):
             if "embeddings" in outputs:
                 embedding = outputs["embeddings"]
@@ -310,6 +294,12 @@ class FaceService:
         face = self.processor.extract_face(image)
         if face is None:
             raise HTTPException(status_code=400, detail="No face detected in the image")
+        
+        debug_dir = Path("tmp")
+        debug_dir.mkdir(parents=True, exist_ok=True)
+        filename = f"{uuid.uuid4()}.jpg"
+        face.save(debug_dir / filename)
+        
         return face
 
 

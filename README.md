@@ -27,7 +27,7 @@ http://localhost:6333/dashboard#/collections/faces
 
 ### Setup Environments 
 - Install `uv`
-```
+``` bash
 curl -LsSf https://astral.sh/uv/install.sh | s
 ```
 - Create environment
@@ -40,10 +40,19 @@ uv sync
 ```
 
 
-### Sample
-- Register Ronaldo face
+### Examples
+You can **run pre-defined  auto-test script** or **test using your own images**.
+
+- Run auto-test script
+``` bash
+sh ./script.sh
 ```
-uv run python sample.py --action REGISTER --image ./resources/ronaldo1.jpg --employee-id 1 --employee-name "Nguyen Huy Ronaldo"
+
+- Register Ronaldo face
+``` bash
+uv run python sample.py --action REGISTER --image ./resources/ronaldo1.jpg --employee-id 1 --employee-name "Ronaldo"
+```
+```
 Registering face via http://localhost:8000/face/register ...
 Register response: {
   "status": "registered",
@@ -54,8 +63,10 @@ Point ID for future operations: 1ecec7a6-9a1d-4011-b883-d63d636fcec7
 ```
 
 - Register Messi face 
+``` bash
+uv run python sample.py --action REGISTER --image ./resources/messi1.jpg --employee-id 2 --employee-name "Messi"
 ```
-uv run python sample.py --action REGISTER --image ./resources/messi1.jpg --employee-id 2 --employee-name "Nguyen Messi"
+```
 Registering face via http://localhost:8000/face/register ...
 Register response: {
   "status": "registered",
@@ -66,8 +77,10 @@ Point ID for future operations: 06a4323f-010b-4e50-b82c-f3e4e79a0ac9
 ```
 
 - Recognize Ronaldo face with another image
+``` bash
+uv run python sample.py --action RECOGNIZE --image ./resources/ronaldo2.jpg --threshold 0.5
 ```
-python sample.py --action RECOGNIZE --image ./resources/ronaldo2.jpg --threshold 0.5
+```
 Recognizing face via http://localhost:8000/face/recognize ...
 Recognize response: {
   "matched": false,
@@ -87,8 +100,10 @@ Recognize response: {
 ```
 
 - Delete Ronaldo face data
-```
+``` bash
 uv run python sample.py --action DELETE --point-id 1ecec7a6-9a1d-4011-b883-d63d636fcec7
+```
+```
 Deleting point 1ecec7a6-9a1d-4011-b883-d63d636fcec7 via http://localhost:8000/face/1ecec7a6-9a1d-4011-b883-d63d636fcec7 ...
 Delete response: {
   "deleted": true,

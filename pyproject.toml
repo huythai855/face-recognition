@@ -9,6 +9,7 @@ dependencies = [
     "fastapi>=0.122.0",
     "huggingface-hub",
     "numpy>=2.3.5",
+    "python-dotenv>=1.0.0",
     "qdrant-client>=1.16.1",
     "tokenizers>=0.15",
     "torch>=2.9.1",
